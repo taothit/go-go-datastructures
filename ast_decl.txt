@@ -1,0 +1,70 @@
+type ArrayType struct{ ... }
+type AssignStmt struct{ ... }
+type BadDecl struct{ ... }
+type BadExpr struct{ ... }
+type BadStmt struct{ ... }
+type BasicLit struct{ ... }
+type BinaryExpr struct{ ... }
+type BlockStmt struct{ ... }
+type BranchStmt struct{ ... }
+type CallExpr struct{ ... }
+type CaseClause struct{ ... }
+type ChanDir int
+type ChanType struct{ ... }
+type CommClause struct{ ... }
+type Comment struct{ ... }
+type CommentGroup struct{ ... }
+type CommentMap map[Node][]*CommentGroup
+type CompositeLit struct{ ... }
+type Decl interface{ ... }
+type DeclStmt struct{ ... }
+type DeferStmt struct{ ... }
+type Ellipsis struct{ ... }
+type EmptyStmt struct{ ... }
+type Expr interface{ ... }
+type ExprStmt struct{ ... }
+type Field struct{ ... }
+type FieldFilter func(name string, value reflect.Value) bool
+type FieldList struct{ ... }
+type File struct{ ... }
+type Filter func(string) bool
+type ForStmt struct{ ... }
+type FuncDecl struct{ ... }
+type FuncLit struct{ ... }
+type FuncType struct{ ... }
+type GenDecl struct{ ... }
+type GoStmt struct{ ... }
+type Ident struct{ ... }
+type IfStmt struct{ ... }
+type ImportSpec struct{ ... }
+type Importer func(imports map[string]*Object, path string) (pkg *Object, err error)
+type IncDecStmt struct{ ... }
+type IndexExpr struct{ ... }
+type InterfaceType struct{ ... }
+type KeyValueExpr struct{ ... }
+type LabeledStmt struct{ ... }
+type MapType struct{ ... }
+type MergeMode uint
+type Node interface{ ... }
+type ObjKind int
+type Object struct{ ... }
+type Package struct{ ... }
+type ParenExpr struct{ ... }
+type RangeStmt struct{ ... }
+type ReturnStmt struct{ ... }
+type Scope struct{ ... }
+type SelectStmt struct{ ... }
+type SelectorExpr struct{ ... }
+type SendStmt struct{ ... }
+type SliceExpr struct{ ... }
+type Spec interface{ ... }
+type StarExpr struct{ ... }
+type Stmt interface{ ... }
+type StructType struct{ ... }
+type SwitchStmt struct{ ... }
+type TypeAssertExpr struct{ ... }
+type TypeSpec struct{ ... }
+type TypeSwitchStmt struct{ ... }
+type UnaryExpr struct{ ... }
+type ValueSpec struct{ ... }
+type Visitor interface{ ... }

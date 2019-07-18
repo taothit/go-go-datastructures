@@ -1,11 +1,11 @@
-## Go Generative Datastructures
+## Go Generative data structures
 
-Use Go's code-generation feature, `go:generate`, to build templatized datastructures to suit the purpose of an application.
+Use Go's code-generation feature, `go:generate`, to build custom data structures to suit the purpose of the application.
 
-Each generated datastructure will map a single type to the container(s) for each file.  
+Each generated data structures will map a single type to the container(s) for each file.  
 
 ### Usage
-Define a specific datastructure for your type, Foo, in the go:generate line of your file.
+Define a specific data structures for your type, Foo, in the go:generate line of your file.
 
 ```go
 FooStack.go
@@ -60,7 +60,7 @@ func (f *FooStack) Length() {
 // ======= Generated Implementation =======
 ```
 ### MVP punchlist
-* [ ] Provide the following basic datastructures
+* [ ] Provide the following basic data structures
   * [ ] List
   * [ ] Stack
   * [ ] Queue
@@ -72,7 +72,7 @@ func (f *FooStack) Length() {
   * [ ] Structure name
   * [ ] Package name
   * [ ] out
-* [ ] Generate nested datastructures (stack of stacks, e.g.) 
+* [ ] Generate nested data structures (stack of stacks, e.g.) 
 
 ### v2.0 
 * [ ] Allow definition through nesting types:
@@ -93,7 +93,7 @@ type FooDeque interface {
 }
 
 ```
-Running `go generate` would create a non-overlapping union of functionality from the two embedded datastructures
+Running `go generate` would create a non-overlapping union of functionality from the two embedded data structures
 ```go
 // ======= Generated Implementation =======
 
