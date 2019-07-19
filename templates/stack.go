@@ -2,7 +2,6 @@ package templates
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
 )
 
@@ -54,7 +53,7 @@ func (s *StackTemplate) Length() int {
 func (s *StackTemplate) String() string {
 	var out string
 	for _, el := range *s {
-		out = fmt.Sprintf("%s %s", out, strconv.Itoa(el))
+		out = fmt.Sprintf("%s %s", out, el)
 	}
 	return fmt.Sprintf("[%s]<", strings.Trim(out, " "))
 }

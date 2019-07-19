@@ -185,14 +185,20 @@ func parse(instructions string) *Instruction {
 
 func (i *Instruction) Visit(n ast.Node) ast.Visitor {
 	switch v := n.(type) {
-	case *ast.Ident:
-		log.Println("Inspecting *ast.Ident...")
-		if v.Name == "StackTemplate" {
+	case *ast.TypeSpec:
+		log.Println("Inspecting *ast.TypeSpec...")
+		if t, ok := v.Type.(*ast.ArrayType); ok && v.Name.Name == "StackTemplate" {
+			if _, ok := t.Elt.(*ast.InterfaceType); ok {
+				t.Elt = ast.NewIdent("Widget")
+			}
+
+		}
+		if v.Name.Name == "StackTemplate" {
 			log.Println("Replacing identifier name...")
-			v.Name = i.dsName()
-			if v.Obj != nil && v.Obj.Kind == ast.Typ && v.Obj.Name == "StackTemplate" {
+			v.Name.Name = i.dsName()
+			if v.Name.Obj != nil && v.Name.Obj.Kind == ast.Typ && v.Name.Obj.Name == "StackTemplate" {
 				log.Println("Replacing type name...")
-				v.Obj.Name = i.dsName()
+				v.Name.Obj.Name = i.dsName()
 			}
 		}
 	case *ast.Field:
@@ -200,7 +206,6 @@ func (i *Instruction) Visit(n ast.Node) ast.Visitor {
 		if _, ok := v.Type.(*ast.InterfaceType); ok {
 			v.Type = ast.NewIdent("Widget")
 		}
-
 	case *ast.StarExpr:
 		log.Println("Inspecting *ast.StarExpr...")
 		if _, ok := v.X.(*ast.InterfaceType); ok {
@@ -254,6 +259,10 @@ type Datastructure struct {
 func (d *Datastructure) Print(w io.Writer) error {
 	// Write datastructure to file
 	d.replaceInTemplate()
+	log.Println("Printing tree...")
+	if err := ast.Fprint(w, nil, d.templateAst, nil); err != nil {
+		return fmt.Errorf("failed to write datastructure AST to writer: %v", err)
+	}
 
 	cfg := printer.Config{Mode: printer.UseSpaces | printer.SourcePos, Indent: 0, Tabwidth: 4}
 	fErr := cfg.Fprint(os.Stdout, token.NewFileSet(), d.templateAst)
