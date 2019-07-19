@@ -6,11 +6,13 @@ import (
 	"fmt"
 	"go/ast"
 	"go/parser"
+	"go/printer"
 	"go/token"
 	"io"
 	"log"
 	"os"
 	"regexp"
+	"strings"
 )
 
 var directiveMask = regexp.MustCompile(`^([a-zA-Z]\w+)\[([a-zA-Z]\w+)\]$`)
@@ -51,7 +53,6 @@ func (d *DatastructureTemplate) copy(ds datastructureType) []byte {
 		return nil
 	}
 
-	log.Printf("%v", d)
 	tmpl := (*d)[ds]
 	if tmpl == nil {
 		return nil
@@ -75,21 +76,29 @@ func NewDatastructureTemplate() *DatastructureTemplate {
 
 	for i, path := range dsPaths {
 		if path != "" {
+			log.Printf("loading datastructure from template (%s)", path)
 			file, err := os.OpenFile(path, os.O_RDWR, 0777)
 			if err != nil {
 				log.Printf("failed to open template file (%s): %v", path, err)
 				tmpls = append(tmpls, []byte(datastructures[i]))
 				continue
 			}
+			stat, err := file.Stat()
+			if err != nil {
+				log.Printf("failed to retrieve info for file (%s): %v", path, err)
+			}
 
-			buf := make([]byte, 0)
+			buf := make([]byte, stat.Size())
 			l, err := file.Read(buf)
 			if l < 1 || len(buf) == 0 || err != nil {
-				log.Printf("failed to read complete template file (%s): %v", path, err)
+				log.Printf("failed to read complete template file (%s) (read=%d/%d): %v", path, l, stat.Size(), err)
 				tmpls = append(tmpls, []byte(datastructures[i]))
 				continue
 			}
 
+			log.Printf("read %d (of %d) bytes", l, stat.Size())
+			tmpls = append(tmpls, buf)
+		} else {
 			tmpls = append(tmpls, []byte(datastructures[i]))
 		}
 	}
@@ -135,7 +144,7 @@ func main() {
 	pkg, err := ast.NewPackage(fSet, files, nil, nil)
 	ds := NewDatastructure(instructions, pkg, file)
 	if ds == nil {
-		log.Fatalf("failed to find instruction file (%s)", *path)
+		log.Fatalf("failed to create datastructure for instructions (%s)", instructions)
 	}
 
 	err = ds.Print(os.Stdout)
@@ -145,7 +154,7 @@ func main() {
 }
 
 func NewDatastructure(instructions string, pkg *ast.Package, instructionFile *ast.File) *Datastructure {
-	instr := NewInstruction(instructions, instructionFile)
+	instr := parse(instructions)
 	tmpl, pErr := parser.ParseFile(token.NewFileSet(), "", templates.copy(instr.dsType), parser.AllErrors)
 	if pErr != nil {
 		log.Printf("failed to load template datastructure (%s): %v", instr.dsType, pErr)
@@ -155,24 +164,22 @@ func NewDatastructure(instructions string, pkg *ast.Package, instructionFile *as
 	return &Datastructure{
 		instruction: instr,
 		pkg:         pkg,
-		destination: pkg.Files[*path],
+		destination: instructionFile,
 		templateAst: tmpl,
 	}
 }
 
 type Instruction struct {
-	dsType          datastructureType
-	entityType      string
-	instructionFile *ast.File
+	dsType     datastructureType
+	entityType string
 }
 
-func NewInstruction(instructions string, instructionFile *ast.File) *Instruction {
-	dsType, entityType := parse(instructions)
+func parse(instructions string) *Instruction {
+	dsType, entityType := parseInstructions(instructions)
 
 	return &Instruction{
-		instructionFile: instructionFile,
-		dsType:          dsType,
-		entityType:      entityType,
+		dsType:     dsType,
+		entityType: entityType,
 	}
 }
 
@@ -182,11 +189,22 @@ func (i *Instruction) Visit(n ast.Node) ast.Visitor {
 		log.Println("Inspecting *ast.Ident...")
 		if v.Name == "StackTemplate" {
 			log.Println("Replacing identifier name...")
-			v.Name = i.entityType
+			v.Name = i.dsName()
+			if v.Obj != nil && v.Obj.Kind == ast.Typ && v.Obj.Name == "StackTemplate" {
+				log.Println("Replacing type name...")
+				v.Obj.Name = i.dsName()
+			}
 		}
-		if v.Obj != nil && v.Obj.Kind == ast.Typ && v.Obj.Name == "StackTemplate" {
-			log.Println("Replacing type name...")
-			v.Obj.Name = i.entityType
+	case *ast.Field:
+		log.Println("Inspecting *ast.Field...")
+		if _, ok := v.Type.(*ast.InterfaceType); ok {
+			v.Type = ast.NewIdent("Widget")
+		}
+
+	case *ast.StarExpr:
+		log.Println("Inspecting *ast.StarExpr...")
+		if _, ok := v.X.(*ast.InterfaceType); ok {
+			v.X = ast.NewIdent("Widget")
 		}
 	default:
 		// log.Println("found other node; moving on...")
@@ -196,21 +214,29 @@ func (i *Instruction) Visit(n ast.Node) ast.Visitor {
 	return i
 }
 
-func parse(instructions string) (datastructureType, string) {
+func (i *Instruction) dsName() string {
+	if i == nil {
+		return ""
+	}
+	ds := fmt.Sprintf("%s", i.dsType)
+	return fmt.Sprintf("%s%s", i.entityType, strings.ToUpper(ds[:1])+ds[1:])
+}
+
+func parseInstructions(instructions string) (datastructureType, string) {
 	matches := directiveMask.FindAllStringSubmatch(instructions, -1)
 
 	if matches == nil || len(matches) < 1 {
 		return unknown, ""
 	}
 
-	sub := matches[0]
-	if sub[0] == instructions {
-		sub = sub[1:]
+	subs := matches[0]
+	if subs[0] == instructions {
+		subs = subs[1:]
 	}
 
 	for i, dsType := range datastructures {
-		if dsType == sub[0] {
-			return datastructureType(i), sub[1]
+		if dsType == subs[0] {
+			return datastructureType(i), subs[1]
 		}
 	}
 
@@ -227,23 +253,18 @@ type Datastructure struct {
 // Print the datastructure to the provided Writer
 func (d *Datastructure) Print(w io.Writer) error {
 	// Write datastructure to file
-	d.fillTemplate()
-	log.Println("Printing tree...")
-	if err := ast.Fprint(w, nil, d.templateAst, nil); err != nil {
-		return fmt.Errorf("failed to write datastructure AST to writer: %v", err)
-	}
+	d.replaceInTemplate()
 
-	// Print the AST for file to w and log it
-	// fSet := token.NewFileSet()
-	// ast.Fprint(w, fSet, file, nil)
+	cfg := printer.Config{Mode: printer.UseSpaces | printer.SourcePos, Indent: 0, Tabwidth: 4}
+	fErr := cfg.Fprint(os.Stdout, token.NewFileSet(), d.templateAst)
+	if fErr != nil {
+		return fmt.Errorf("failed to write custom datastructure source file (%s): %v", d.instruction.dsName(), fErr)
+	}
 	return nil
 }
 
-func (d *Datastructure) fillTemplate() (*ast.File, error) {
-
+func (d *Datastructure) replaceInTemplate() {
 	// Walk the AST and replace interface{} with the new type
 	log.Println("Walking tree...")
 	ast.Walk(d.instruction, d.templateAst)
-
-	return d.templateAst, nil
 }
