@@ -5,7 +5,7 @@ Use Go's code-generation feature, `go:generate`, to build custom data structures
 Each generated data structures will map a single type to the container(s) for each file.  
 
 ### Usage
-Define a specific data structures for your type, Foo, in the go:generate line of your file.
+Define a specific data structures for your type, **Foo**, in the go:generate line of your file.
 
 ```go
 FooStack.go
