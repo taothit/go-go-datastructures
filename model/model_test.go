@@ -21,7 +21,7 @@ func TestParseInstructions(t *testing.T) {
 		{"malformed entity", "Stack[2]", model.Unknown, ""},
 		{"entity with number in body", "Stack[W2]", model.Stack, "W2"},
 		{"entity with underscore", "Stack[W_2]", model.Stack, "W_2"},
-		{"Heap of widget", "Heap[Widget]", model.Heap, "Widget"},
+		{"Heap of widgets", "Heap[Widget]", model.Heap, "Widget"},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
