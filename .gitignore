@@ -2,5 +2,5 @@
 .db
 **/.idea
 **/*.iml
-*go-go-datastructures
+*ggd
 *ggd

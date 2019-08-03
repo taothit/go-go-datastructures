@@ -10,6 +10,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"path/filepath"
 )
 
 // datastructure identifies the templates available from which to create a type-specific collection.
@@ -31,7 +32,7 @@ type DatastructureTemplate [][]byte
 
 // TODO(tad): create generator to produce datastructure set from datastructure values.
 var datastructures = [...]string{"Unknown", "Stack", "Heap"}
-var dsPaths = [...]string{"", "../templates/stack.go", ""}
+var dsPaths = [...]string{"", "templates/stack.go", ""}
 
 func (d *DatastructureTemplate) Copy(ds DatastructureType) []byte {
 	if d == nil {
@@ -55,10 +56,18 @@ func (d *DatastructureTemplate) Copy(ds DatastructureType) []byte {
 func NewDatastructureTemplate() *DatastructureTemplate {
 	tmpls := DatastructureTemplate(make([][]byte, 0))
 
+	wd, err := os.Getwd()
+	if err != nil {
+		log.Fatalf("ggd: unknown working directory: %v", err)
+	}
+
 	for i, path := range dsPaths {
 		if path != "" {
 			log.Printf("loading datastructure from template (%s)", path)
-			file, err := os.OpenFile(path, os.O_RDWR, 0777)
+			pathInWd := filepath.Join(wd, path)
+			log.Printf("wd+path: %s", pathInWd)
+			file, err := os.OpenFile(pathInWd, os.O_RDWR, 0777)
+
 			if err != nil {
 				log.Printf("failed to open template file (%s): %v", path, err)
 				tmpls = append(tmpls, []byte(datastructures[i]))
@@ -121,12 +130,12 @@ func (d *Datastructure) Print(w io.Writer) error {
 	// Write datastructure to file
 	d.replaceInTemplate()
 	log.Println("Printing tree...")
-	if err := ast.Fprint(w, nil, d.templateAst, nil); err != nil {
+	if err := ast.Fprint(os.Stdout, nil, d.templateAst, nil); err != nil {
 		return fmt.Errorf("failed to write datastructure AST to writer: %v", err)
 	}
 
 	cfg := printer.Config{Mode: printer.UseSpaces | printer.SourcePos, Indent: 0, Tabwidth: 4}
-	fErr := cfg.Fprint(os.Stdout, token.NewFileSet(), d.templateAst)
+	fErr := cfg.Fprint(w, token.NewFileSet(), d.templateAst)
 	if fErr != nil {
 		return fmt.Errorf("failed to write custom datastructure source file (%s): %v", d.instruction.dsName(), fErr)
 	}

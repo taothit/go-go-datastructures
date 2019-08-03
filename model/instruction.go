@@ -81,7 +81,7 @@ func ParseInstructions(instructions string) (DatastructureType, string) {
 	}
 
 	for i, dsType := range datastructures {
-		if dsType == subs[0] {
+		if strings.ToLower(dsType) == strings.ToLower(subs[0]) {
 			return DatastructureType(i), subs[1]
 		}
 	}

@@ -2,7 +2,7 @@ package model_test
 
 import (
 	"github.com/google/go-cmp/cmp"
-	"taothit/go-go-datastructures/model"
+	"taothit/ggd/model"
 	"testing"
 )
 

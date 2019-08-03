@@ -1,4 +1,4 @@
-module taothit/go-go-datastructures
+module taothit/ggd
 
 go 1.12
 
