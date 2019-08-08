@@ -30,7 +30,7 @@ func (i *Instruction) Visit(n ast.Node) ast.Visitor {
 		log.Println("Inspecting *ast.TypeSpec...")
 		if t, ok := v.Type.(*ast.ArrayType); ok && v.Name.Name == "StackTemplate" {
 			if _, ok := t.Elt.(*ast.InterfaceType); ok {
-				t.Elt = ast.NewIdent("Widget")
+				t.Elt = ast.NewIdent(i.entityType)
 			}
 
 		}
@@ -45,12 +45,19 @@ func (i *Instruction) Visit(n ast.Node) ast.Visitor {
 	case *ast.Field:
 		log.Println("Inspecting *ast.Field...")
 		if _, ok := v.Type.(*ast.InterfaceType); ok {
-			v.Type = ast.NewIdent("Widget")
+			v.Type = ast.NewIdent(i.entityType)
+		}
+		if s, ok := v.Type.(*ast.StarExpr); ok {
+			if ident, ok := s.X.(*ast.Ident); ok {
+				if ident.Name != i.entityType {
+					s.X = ast.NewIdent(i.dsName())
+				}
+			}
 		}
 	case *ast.StarExpr:
 		log.Println("Inspecting *ast.StarExpr...")
 		if _, ok := v.X.(*ast.InterfaceType); ok {
-			v.X = ast.NewIdent("Widget")
+			v.X = ast.NewIdent(i.entityType)
 		}
 	default:
 		// log.Println("found other node; moving on...")

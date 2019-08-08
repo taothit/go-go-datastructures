@@ -2,15 +2,14 @@ package main
 
 import (
 	"flag"
-	"go/ast"
-	"go/parser"
-	"go/token"
+	"io"
 	"log"
 	"os"
-	"taothit/ggd/model"
+	"path/filepath"
+	"taothit/ggd/cmd"
 )
 
-var path = flag.String("pathTo", wdOrEmpty(), "fully-qualified path to the datastructure's creation instruction file.")
+var pathTo = flag.String("pathTo", wdOrEmpty(), "fully-qualified path to the datastructure's creation instruction file.")
 
 func wdOrEmpty() string {
 	if dir, err := os.Getwd(); err != nil {
@@ -49,7 +48,7 @@ func wdOrEmpty() string {
 func main() {
 	flag.Parse()
 
-	if *path == "" || *path == wdOrEmpty() {
+	if *pathTo == "" || *pathTo == wdOrEmpty() {
 		log.Fatalln("ggd: missing required path to datastructure source file.")
 		// TODO(tad) - need to create usage and print it before panicking
 	}
@@ -61,28 +60,17 @@ func main() {
 	}
 	instructions := flag.Arg(0)
 
-	// Load project source files
-	fSet := token.NewFileSet()
-	file, first := parser.ParseFile(fSet, *path, nil, parser.AllErrors)
-	if first != nil  {
-		log.Fatalf("ggd: unparsable template file (%s): %v", *path, first)
-	}
-	files := map[string]*ast.File{file.Name.Name: file}
-
-	// Find instruction file using *path
-	pkg, err := ast.NewPackage(fSet, files, nil, nil)
-	ds := model.NewDatastructure(instructions, pkg, file)
-	if ds == nil {
-		log.Fatalf("ggd: unknown datastructure for instructions (%s)", instructions)
+	p, err := filepath.Abs(*pathTo)
+	if err != nil {
+		log.Fatalf("ggd: invalid path to directive file: %v", err)
 	}
 
-	dst, err := os.OpenFile(*path, os.O_APPEND|os.O_RDWR, 0777)
+	dst, err := os.OpenFile(*pathTo, os.O_APPEND|os.O_RDWR, 0777)
 	if err != nil {
 		log.Fatalf("ggd: destination file unavailable: %v", err)
 	}
+	var out = io.Writer(dst)
 
-	err = ds.Print(dst)
-	if err != nil {
-		log.Fatalf("ggd: failed creating custom datastructure (%s): %v", ds, err)
-	}
+	cmd.Generate(instructions, p, &out)
 }
+

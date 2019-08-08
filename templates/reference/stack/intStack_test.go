@@ -3,7 +3,7 @@ package stack_test
 import (
 	"fmt"
 	"github.com/google/go-cmp/cmp"
-	"taothit/ggd/templates/example/stack"
+	"taothit/ggd/templates/reference/stack"
 	"testing"
 )
 

@@ -126,7 +126,7 @@ type Datastructure struct {
 }
 
 // Print the datastructure to the provided Writer
-func (d *Datastructure) Print(w io.Writer) error {
+func (d *Datastructure) Print(w *io.Writer) error {
 	// Write datastructure to file
 	d.replaceInTemplate()
 	log.Println("Printing tree...")
@@ -135,7 +135,7 @@ func (d *Datastructure) Print(w io.Writer) error {
 	}
 
 	cfg := printer.Config{Mode: printer.UseSpaces | printer.SourcePos, Indent: 0, Tabwidth: 4}
-	fErr := cfg.Fprint(w, token.NewFileSet(), d.templateAst)
+	fErr := cfg.Fprint(*w, token.NewFileSet(), d.templateAst)
 	if fErr != nil {
 		return fmt.Errorf("failed to write custom datastructure source file (%s): %v", d.instruction.dsName(), fErr)
 	}
