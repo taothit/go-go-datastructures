@@ -32,7 +32,16 @@ type DatastructureTemplate [][]byte
 
 // TODO(tad): create generator to produce datastructure set from datastructure values.
 var datastructures = [...]string{"Unknown", "Stack", "Heap"}
-var dsPaths = [...]string{"", "templates/stack.go", ""}
+var dsPaths = [...]string{"", filepath.Join("..", "templates", "stack.go"), ""}
+
+func maybeAbsPath(p string) (path string) {
+	path = p
+	if abs, err := filepath.Abs(p); err == nil {
+		path = abs
+	}
+
+	return
+}
 
 func (d *DatastructureTemplate) Copy(ds DatastructureType) []byte {
 	if d == nil {
@@ -60,6 +69,7 @@ func NewDatastructureTemplate() *DatastructureTemplate {
 	if err != nil {
 		log.Fatalf("ggd: unknown working directory: %v", err)
 	}
+	wd = filepath.Join("..", filepath.Base(wd))
 
 	for i, path := range dsPaths {
 		if path != "" {
@@ -102,8 +112,9 @@ func init() {
 	templates = NewDatastructureTemplate()
 }
 
-func NewDatastructure(instructions string, pkg *ast.Package, instructionFile *ast.File) *Datastructure {
-	instr := parse(instructions)
+func NewDatastructure(instructions string, pkg *ast.Package, instructionFile *ast.File, mode LogMode) *Datastructure {
+	instr := Parse(instructions)
+	instr.Mode(mode)
 	tmpl, pErr := parser.ParseFile(token.NewFileSet(), "", templates.Copy(instr.dsType), parser.AllErrors)
 	if pErr != nil {
 		log.Printf("failed to load template datastructure (%s): %v", instr.dsType, pErr)
@@ -115,6 +126,7 @@ func NewDatastructure(instructions string, pkg *ast.Package, instructionFile *as
 		pkg:         pkg,
 		destination: instructionFile,
 		templateAst: tmpl,
+		mode: mode,
 	}
 }
 
@@ -123,15 +135,27 @@ type Datastructure struct {
 	pkg         *ast.Package
 	destination *ast.File
 	templateAst *ast.File
+	mode        LogMode
+}
+
+func (d *Datastructure) inDebugMode() bool {
+	return d != nil && d.mode == Noisy
+}
+func (d *Datastructure) debugln(msg string) {
+	if d != nil && d.mode == Noisy {
+		log.Println(msg)
+	}
 }
 
 // Print the datastructure to the provided Writer
 func (d *Datastructure) Print(w *io.Writer) error {
 	// Write datastructure to file
 	d.replaceInTemplate()
-	log.Println("Printing tree...")
-	if err := ast.Fprint(os.Stdout, nil, d.templateAst, nil); err != nil {
-		return fmt.Errorf("failed to write datastructure AST to writer: %v", err)
+	d.debugln("Printing tree...")
+	if d.inDebugMode() {
+		if err := ast.Fprint(os.Stdout, nil, d.templateAst, nil); err != nil {
+			return fmt.Errorf("failed to write datastructure AST to writer: %v", err)
+		}
 	}
 
 	cfg := printer.Config{Mode: printer.UseSpaces | printer.SourcePos, Indent: 0, Tabwidth: 4}
@@ -144,7 +168,7 @@ func (d *Datastructure) Print(w *io.Writer) error {
 
 func (d *Datastructure) replaceInTemplate() {
 	// Walk the AST and replace interface{} with the new type
-	log.Println("Walking tree...")
+	d.debugln("Walking tree...")
 	ast.Walk(d.instruction, d.templateAst)
 }
 

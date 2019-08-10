@@ -26,7 +26,7 @@ func TestParseInstructions(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			if gotType, gotEntity := model.ParseInstructions(test.instruction); !cmp.Equal(test.dsType, gotType) || !cmp.Equal(test.entity, gotEntity) {
-				t.Errorf("parse(%s)=(datastructureType=%s,entity=%s);got=(datastructureType=%s,entity=%s)", test.instruction, test.dsType, orEmpty(test.entity), gotType, orEmpty(gotEntity))
+				t.Errorf("Parse(%s)=(datastructureType=%s,entity=%s);got=(datastructureType=%s,entity=%s)", test.instruction, test.dsType, orEmpty(test.entity), gotType, orEmpty(gotEntity))
 			}
 		})
 	}

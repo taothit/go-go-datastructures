@@ -71,6 +71,6 @@ func main() {
 	}
 	var out = io.Writer(dst)
 
-	cmd.Generate(instructions, p, &out)
+	cmd.Generate(instructions, p, &out, Silent)
 }
 

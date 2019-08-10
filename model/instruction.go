@@ -13,9 +13,27 @@ var directiveMask = regexp.MustCompile(`^([a-zA-Z]\w+)\[([a-zA-Z]\w+)\]$`)
 type Instruction struct {
 	dsType     DatastructureType
 	entityType string
+	mode       LogMode
 }
 
-func parse(instructions string) *Instruction {
+type LogMode int
+
+const (
+	Noisy LogMode = iota
+	Silent
+)
+
+func (i *Instruction) Mode(m LogMode) {
+	i.mode = m
+}
+
+func (i *Instruction) debugln(msg string) {
+	if i != nil && i.mode == Noisy {
+		log.Println(msg)
+	}
+}
+
+func Parse(instructions string) *Instruction {
 	dsType, entityType := ParseInstructions(instructions)
 
 	return &Instruction{
@@ -27,7 +45,7 @@ func parse(instructions string) *Instruction {
 func (i *Instruction) Visit(n ast.Node) ast.Visitor {
 	switch v := n.(type) {
 	case *ast.TypeSpec:
-		log.Println("Inspecting *ast.TypeSpec...")
+		i.debugln("Inspecting *ast.TypeSpec...")
 		if t, ok := v.Type.(*ast.ArrayType); ok && v.Name.Name == "StackTemplate" {
 			if _, ok := t.Elt.(*ast.InterfaceType); ok {
 				t.Elt = ast.NewIdent(i.entityType)
@@ -35,15 +53,15 @@ func (i *Instruction) Visit(n ast.Node) ast.Visitor {
 
 		}
 		if v.Name.Name == "StackTemplate" {
-			log.Println("Replacing identifier name...")
+			i.debugln("Replacing identifier name...")
 			v.Name.Name = i.dsName()
 			if v.Name.Obj != nil && v.Name.Obj.Kind == ast.Typ && v.Name.Obj.Name == "StackTemplate" {
-				log.Println("Replacing type name...")
+				i.debugln("Replacing type name...")
 				v.Name.Obj.Name = i.dsName()
 			}
 		}
 	case *ast.Field:
-		log.Println("Inspecting *ast.Field...")
+		i.debugln("Inspecting *ast.Field...")
 		if _, ok := v.Type.(*ast.InterfaceType); ok {
 			v.Type = ast.NewIdent(i.entityType)
 		}
@@ -55,7 +73,7 @@ func (i *Instruction) Visit(n ast.Node) ast.Visitor {
 			}
 		}
 	case *ast.StarExpr:
-		log.Println("Inspecting *ast.StarExpr...")
+		i.debugln("Inspecting *ast.StarExpr...")
 		if _, ok := v.X.(*ast.InterfaceType); ok {
 			v.X = ast.NewIdent(i.entityType)
 		}
