@@ -14,7 +14,7 @@ import (
 const (
 	integrationDir = "integration"
 	buildDir = "test"
-	instructions = "stack[Widget]"
+	instructions = "Stack[int]"
 )
 
 func main() {
