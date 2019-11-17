@@ -12,74 +12,61 @@ import (
 	"testing"
 )
 
-var stackSource = `package cmd_test`
+var stackSource = `package stack`
 
-var mode model.LogMode = model.Silent
+var mode = model.Silent
+
+var fileName = "intStack"
 
 func TestGenerate(t *testing.T) {
 	tests := []struct {
-		name         string
-		refPath      string
-		instructions string
-		source       *cmd.Directives
+		name       string
+		refPath    string
+		directives *model.Directives
 	}{
-		{"verify stack", "../templates/reference/stack/intStack.go", "Stack[int]", cmd.RawSource(stackSource)},
+		{"verify stack", "../templates/reference/stack/intStack.go", model.DirectivesFrom("Stack[int]")},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			p, err := filepath.Abs(test.refPath)
 			if err != nil {
-				t.Errorf("cmd.Generate(%s, %v, io.Writer); err=%v", test.instructions, test.source, err)
+				t.Errorf("cmd.Generate(%v, io.Writer); err=%v", test.directives, err)
 			}
 
 			f, err := os.Open(p)
 			if err != nil {
-				t.Errorf("cmd.Generate(%s, %v, io.Writer); err=%v", test.instructions, test.source, err)
+				t.Errorf("cmd.Generate(%v, %v, io.Writer); err=%v", test.directives, test.directives, err)
 			}
 
 			info, err := f.Stat()
 			if err != nil {
-				t.Fatalf("cmd.Generate(%s, %v, io.Writer); err=%v", test.instructions, test.source, err)
+				t.Fatalf("cmd.Generate(%v, %v, io.Writer); err=%v", test.directives, test.directives, err)
 			}
 			if mode == model.Noisy {
 				log.Printf("Reference file: Name=%s, FileMode=%s, ", info.Name(), info.Mode())
 			}
 
-			want := ByteSliceOf(info.Size())
+			want := make([]byte, info.Size())
 			n, err := f.Read(want)
 			if err != nil && err != io.EOF {
-				t.Errorf("cmd.Generate(%s, %v, io.Writer); err=%v", test.instructions, test.source, err)
+				t.Errorf("cmd.Generate(%v, %v, io.Writer); err=%v", test.directives, test.directives, err)
 			}
 			if n < 1 {
-				t.Fatalf("cmd.Generate(%s, %v, io.Writer); read %d of %d from %s", test.instructions, test.source, n, info.Size(), test.refPath)
+				t.Fatalf("cmd.Generate(%v, %v, io.Writer); read %d of %d from %s", test.directives, test.directives, n, info.Size(), test.refPath)
 			}
 
-			got := bytes.NewBuffer(ByteSliceOf(0, 2048))
+			got := new(bytes.Buffer)
 			w := io.Writer(got)
-			if err := cmd.Generate(test.instructions, test.source, &w, mode); err != nil {
-				t.Fatalf("cmd.Generate(%s, %v, io.Writer); err=%v", test.instructions, test.source, err)
+			if err := cmd.Generate(test.directives, &w, mode, fileName, ""); err != nil {
+				t.Fatalf("cmd.Generate(%v, %v, io.Writer); err=%v", test.directives, test.directives, err)
 			}
 
-			if !cmp.Equal(want, got) {
-				if mode == model.Noisy {
-					log.Printf("Want:\n%s", string(want))
-					log.Printf("Got:\n%s", string(got.Bytes()))
-				}
-
-				t.Errorf("cmd.Generate(%s, %v, io.Writer); output different from reference (ref=%d bytes; output= %d bytes)", test.instructions, test.source, len(want), len(got.Bytes()))
+			if diff := cmp.Diff(string(want), string(got.Bytes())); diff != "" {
+				t.Errorf("cmd.Generate(%v, %v, io.Writer); output different from reference (ref=%d bytes; output= %d bytes):\n%s", test.directives, test.directives, len(want), len(got.Bytes()), diff)
 			}
+
+			os.Remove(fileName+".go")
 		})
 	}
 }
 
-func ByteSliceOf(size ...int64) (b []byte) {
-	switch len(size) {
-	case 1:
-		b = make([]byte, size[0])
-	case 2:
-		b = make([]byte, size[0], size[1])
-	default:
-		// nil
-	}
-	return
-}

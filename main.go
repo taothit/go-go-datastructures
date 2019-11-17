@@ -1,22 +1,23 @@
 package main
 
 import (
-	"flag"
-	"io"
-	"log"
-	"os"
-	"path/filepath"
-	"taothit/ggd/cmd"
+    "flag"
+    "io"
+    "log"
+    "os"
+    "path/filepath"
+    "taothit/ggd/cmd"
+    "taothit/ggd/model"
 )
 
 var pathTo = flag.String("pathTo", wdOrEmpty(), "fully-qualified path to the datastructure's creation instruction file.")
 
 func wdOrEmpty() string {
-	if dir, err := os.Getwd(); err != nil {
-		return ""
-	} else {
-		return dir
-	}
+    if dir, err := os.Getwd(); err != nil {
+        return ""
+    } else {
+        return dir
+    }
 }
 
 // go:generate ggd -pathTo=templates/example/widgetStack.go stack[Widget]
@@ -46,31 +47,33 @@ func wdOrEmpty() string {
 //  E. Preserves comments by replacing datastructure and entity in template with those in instructions
 // 11. Write out custom datastructure to i/d file
 func main() {
-	flag.Parse()
+    flag.Parse()
 
-	if *pathTo == "" || *pathTo == wdOrEmpty() {
-		log.Fatalln("ggd: missing required path to datastructure source file.")
-		// TODO(tad) - need to create usage and print it before panicking
-	}
+    if *pathTo == "" || *pathTo == wdOrEmpty() {
+        log.Fatalln("ggd: missing required path to datastructure source file.")
+        // TODO(tad) - need to create usage and print it before panicking
+    }
 
-	// Read template instructions
-	if len(flag.Args()) < 1 || flag.Arg(0) == "" {
-		log.Fatalln("ggd: missing required datastructure creation directive.")
-		// TODO(tad) - need to create usage and print it before panicking
-	}
-	instructions := flag.Arg(0)
+    // Read template instructions
+    if len(flag.Args()) < 1 || flag.Arg(0) == "" {
+        log.Fatalln("ggd: missing required datastructure creation directive.")
+        // TODO(tad) - need to create usage and print it before panicking
+    }
+    instructions := flag.Arg(0)
 
-	p, err := filepath.Abs(*pathTo)
-	if err != nil {
-		log.Fatalf("ggd: invalid path to directive file: %v", err)
-	}
+    p, err := filepath.Abs(*pathTo)
+    if err != nil {
+        log.Fatalf("ggd: invalid path to directive file: %v", err)
+    }
 
-	dst, err := os.OpenFile(*pathTo, os.O_APPEND|os.O_RDWR, 0777)
-	if err != nil {
-		log.Fatalf("ggd: destination file unavailable: %v", err)
-	}
-	var out = io.Writer(dst)
+    dst, err := os.OpenFile(p, os.O_APPEND|os.O_RDWR, 0644)
+    if err != nil {
+        log.Fatalf("ggd: destination file unavailable: %v", err)
+    }
+    var out = io.Writer(dst)
 
-	cmd.Generate(instructions, p, &out, Silent)
+    directives := model.DirectivesFrom(instructions)
+    if err = cmd.Generate(directives, &out, model.Noisy, "", ""); err != nil {
+		log.Fatalf("ggd: datastructure (%s) not generated: %v", directives.Instructions(), err)
+    }
 }
-

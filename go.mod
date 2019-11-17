@@ -1,6 +1,6 @@
 module taothit/ggd
 
-go 1.12
+go 1.13
 
 require (
 	github.com/cweill/gotests v1.5.3 // indirect

@@ -2,25 +2,25 @@
 package model
 
 import (
-	"fmt"
-	"go/ast"
-	"go/parser"
-	"go/printer"
-	"go/token"
-	"io"
-	"log"
-	"os"
-	"path/filepath"
+    "fmt"
+    "go/ast"
+    "go/format"
+    "go/parser"
+    "go/token"
+    "io"
+    "log"
+    "os"
+    "path/filepath"
 )
 
 // datastructure identifies the templates available from which to create a type-specific collection.
 type DatastructureType int
 
 const (
-	// Enumerates the available datastructure templates
-	Unknown DatastructureType = iota
-	Stack
-	Heap
+    // Enumerates the available datastructure templates
+    Unknown DatastructureType = iota
+    Stack
+    Heap
 )
 
 // DatastructureTemplate caches datastructure templates and provides retrieval of new copies to be
@@ -34,144 +34,160 @@ type DatastructureTemplate [][]byte
 var datastructures = [...]string{"Unknown", "Stack", "Heap"}
 var dsPaths = [...]string{"", filepath.Join("..", "templates", "stack.go"), ""}
 
-func maybeAbsPath(p string) (path string) {
-	path = p
-	if abs, err := filepath.Abs(p); err == nil {
-		path = abs
-	}
-
-	return
-}
-
 func (d *DatastructureTemplate) Copy(ds DatastructureType) []byte {
-	if d == nil {
-		return nil
-	}
+    if d == nil {
+        return nil
+    }
 
-	tmpl := (*d)[ds]
-	if tmpl == nil {
-		return nil
-	}
+    tmpl := (*d)[ds]
+    if tmpl == nil {
+        return nil
+    }
 
-	buf := make([]byte, cap((*d)[ds]))
-	l := copy(buf, tmpl)
-	if l != len(tmpl) {
-		return nil
-	}
+    buf := make([]byte, cap((*d)[ds]))
+    l := copy(buf, tmpl)
+    if l != len(tmpl) {
+        return nil
+    }
 
-	return buf
+    return buf
 }
 
 func NewDatastructureTemplate() *DatastructureTemplate {
-	tmpls := DatastructureTemplate(make([][]byte, 0))
+    tmpls := DatastructureTemplate(make([][]byte, 0))
 
-	wd, err := os.Getwd()
-	if err != nil {
-		log.Fatalf("ggd: unknown working directory: %v", err)
-	}
-	wd = filepath.Join("..", filepath.Base(wd))
+    wd, err := os.Getwd()
+    if err != nil {
+        log.Fatalf("ggd: unknown working directory: %v", err)
+    }
+    wd = filepath.Join("..", filepath.Base(wd))
 
-	for i, path := range dsPaths {
-		if path != "" {
-			log.Printf("loading datastructure from template (%s)", path)
-			pathInWd := filepath.Join(wd, path)
-			log.Printf("wd+path: %s", pathInWd)
-			file, err := os.OpenFile(pathInWd, os.O_RDWR, 0777)
+    for i, path := range dsPaths {
+        if path != "" {
+            log.Printf("loading datastructure from template (%s)", path)
+            pathInWd := filepath.Join(wd, path)
+            log.Printf("wd+path: %s", pathInWd)
+            file, err := os.OpenFile(pathInWd, os.O_RDWR, 0777)
 
-			if err != nil {
-				log.Printf("failed to open template file (%s): %v", path, err)
-				tmpls = append(tmpls, []byte(datastructures[i]))
-				continue
-			}
-			stat, err := file.Stat()
-			if err != nil {
-				log.Printf("failed to retrieve info for file (%s): %v", path, err)
-			}
+            if err != nil {
+                log.Printf("failed to open template file (%s): %v", path, err)
+                tmpls = append(tmpls, []byte(datastructures[i]))
+                continue
+            }
+            stat, err := file.Stat()
+            if err != nil {
+                log.Printf("failed to retrieve info for file (%s): %v", path, err)
+            }
 
-			buf := make([]byte, stat.Size())
-			l, err := file.Read(buf)
-			if l < 1 || len(buf) == 0 || err != nil {
-				log.Printf("failed to read complete template file (%s) (read=%d/%d): %v", path, l, stat.Size(), err)
-				tmpls = append(tmpls, []byte(datastructures[i]))
-				continue
-			}
+            buf := make([]byte, stat.Size())
+            l, err := file.Read(buf)
+            if l < 1 || len(buf) == 0 || err != nil {
+                log.Printf("failed to read complete template file (%s) (read=%d/%d): %v", path, l, stat.Size(), err)
+                tmpls = append(tmpls, []byte(datastructures[i]))
+                continue
+            }
 
-			log.Printf("read %d (of %d) bytes", l, stat.Size())
-			tmpls = append(tmpls, buf)
-		} else {
-			tmpls = append(tmpls, []byte(datastructures[i]))
-		}
-	}
+            log.Printf("read %d (of %d) bytes", l, stat.Size())
+            tmpls = append(tmpls, buf)
+        } else {
+            tmpls = append(tmpls, []byte(datastructures[i]))
+        }
+    }
 
-	return &tmpls
+    return &tmpls
 }
 
 var templates *DatastructureTemplate
 
 func init() {
-	templates = NewDatastructureTemplate()
+    templates = NewDatastructureTemplate()
 }
 
-func NewDatastructure(instructions string, pkg *ast.Package, instructionFile *ast.File, mode LogMode) *Datastructure {
-	instr := Parse(instructions)
-	instr.Mode(mode)
-	tmpl, pErr := parser.ParseFile(token.NewFileSet(), "", templates.Copy(instr.dsType), parser.AllErrors)
-	if pErr != nil {
-		log.Printf("failed to load template datastructure (%s): %v", instr.dsType, pErr)
-		return nil
-	}
+func NewDatastructure(sourceFile *SourceFile, mode LogMode) *Datastructure {
+    // Load project source files
+    fSet := token.NewFileSet()
 
-	return &Datastructure{
-		instruction: instr,
-		pkg:         pkg,
-		destination: instructionFile,
-		templateAst: tmpl,
-		mode: mode,
-	}
+    sourceFile.mode = mode
+    tmpl, pErr := parser.ParseFile(fSet, "", templates.Copy(sourceFile.dsType), parser.AllErrors|parser.ParseComments)
+    if pErr != nil {
+        log.Printf("failed to load template datastructure (%s): %v", sourceFile.dsType, pErr)
+        return nil
+    }
+
+    return &Datastructure{
+        srcFile:     sourceFile,
+        templateAst: tmpl,
+        mode:        mode,
+    }
 }
 
 type Datastructure struct {
-	instruction *Instruction
-	pkg         *ast.Package
-	destination *ast.File
-	templateAst *ast.File
-	mode        LogMode
+    srcFile     *SourceFile
+    templateAst *ast.File
+    mode        LogMode
 }
 
 func (d *Datastructure) inDebugMode() bool {
-	return d != nil && d.mode == Noisy
+    return d != nil && d.mode == Noisy
 }
+
 func (d *Datastructure) debugln(msg string) {
-	if d != nil && d.mode == Noisy {
-		log.Println(msg)
-	}
+    if d != nil && d.mode == Noisy {
+        log.Println(msg)
+    }
 }
 
-// Print the datastructure to the provided Writer
+// Print datastructure to the provided io.Writer
 func (d *Datastructure) Print(w *io.Writer) error {
-	// Write datastructure to file
-	d.replaceInTemplate()
-	d.debugln("Printing tree...")
-	if d.inDebugMode() {
-		if err := ast.Fprint(os.Stdout, nil, d.templateAst, nil); err != nil {
-			return fmt.Errorf("failed to write datastructure AST to writer: %v", err)
-		}
-	}
+    // Write datastructure to file
+    srcAst, fileSet, err := d.Assemble()
+    if err != nil {
+        return fmt.Errorf("no datastructure to print: %v", err)
+    }
+    d.debugln("Printing tree...")
+    if d.inDebugMode() {
+        if err := ast.Fprint(os.Stdout, nil, d.templateAst, nil); err != nil {
+            return fmt.Errorf("failed to write datastructure AST to writer: %v", err)
+        }
+    }
 
-	cfg := printer.Config{Mode: printer.UseSpaces | printer.SourcePos, Indent: 0, Tabwidth: 4}
-	fErr := cfg.Fprint(*w, token.NewFileSet(), d.templateAst)
-	if fErr != nil {
-		return fmt.Errorf("failed to write custom datastructure source file (%s): %v", d.instruction.dsName(), fErr)
-	}
-	return nil
+    if err := format.Node(*w, fileSet, srcAst); err != nil {
+        return fmt.Errorf("failed to write custom datastructure source file (%s): %v", d.SourceFile().dsName(), err)
+    }
+    return nil
 }
 
-func (d *Datastructure) replaceInTemplate() {
-	// Walk the AST and replace interface{} with the new type
-	d.debugln("Walking tree...")
-	ast.Walk(d.instruction, d.templateAst)
+// Assemble walks the template file and replaces type and datastructure name.
+func (d *Datastructure) Assemble() (
+    srcAst *ast.File,
+    fileSet *token.FileSet,
+    err error) {
+    fileSet = token.NewFileSet()
+    f, pkg, err := d.srcFile.CreateAST(fileSet)
+    if err != nil {
+        return nil, nil, fmt.Errorf("datastructure source not assembled: %v", err)
+    }
+
+    d.srcFile.pkgName = f.Name.Name
+
+    // Walk the AST and replace interface{} with the new type
+    d.debugln("Walking tree...")
+
+    ast.Walk(d.SourceFile(), d.templateAst)
+    pkg.Files[dsPaths[d.SourceFile().dsType]] = d.templateAst
+    pkg.Files[d.SourceFile().FileName()] = ast.MergePackageFiles(d.srcFile.pkg, ast.FilterFuncDuplicates|ast.FilterImportDuplicates|ast.FilterUnassociatedComments)
+
+    return d.templateAst, fileSet, nil
 }
 
 func (d *Datastructure) String() string {
-	return fmt.Sprintf("%s[%s]", d.instruction.dsType, d.instruction.entityType)
+    return fmt.Sprintf("%s[%s]", d.srcFile.dsType, d.srcFile.entityType)
+}
+
+func (d *Datastructure) SourceFile() (s *SourceFile) {
+    if d != nil {
+        s = d.srcFile
+    }
+
+    return
 }

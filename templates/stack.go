@@ -45,11 +45,12 @@ func (s *StackTemplate) Pop() *interface{} {
 	}
 }
 
+// Length provides len() of internal storage.
 func (s *StackTemplate) Length() int {
 	return len(*s)
 }
 
-// Print returns the string representation of the StackTemplate
+// String returns a human-readable representation of the StackTemplate
 func (s *StackTemplate) String() string {
 	var out string
 	for _, el := range *s {
