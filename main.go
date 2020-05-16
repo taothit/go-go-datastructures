@@ -7,7 +7,7 @@ import (
 	"go/token"
 	"log"
 	"os"
-	"taothit/ggd/model"
+	"taothit/ggd/datastructure"
 )
 
 var path = flag.String("pathTo", wdOrEmpty(), "fully-qualified path to the datastructure's creation instruction file.")
@@ -64,14 +64,14 @@ func main() {
 	// Load project source files
 	fSet := token.NewFileSet()
 	file, first := parser.ParseFile(fSet, *path, nil, parser.AllErrors)
-	if first != nil  {
+	if first != nil {
 		log.Fatalf("ggd: unparsable template file (%s): %v", *path, first)
 	}
 	files := map[string]*ast.File{file.Name.Name: file}
 
 	// Find instruction file using *path
 	pkg, err := ast.NewPackage(fSet, files, nil, nil)
-	ds := model.NewDatastructure(instructions, pkg, file)
+	ds := datastructure.NewDatastructure(instructions, pkg, file)
 	if ds == nil {
 		log.Fatalf("ggd: unknown datastructure for instructions (%s)", instructions)
 	}

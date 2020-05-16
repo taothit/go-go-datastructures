@@ -13,8 +13,8 @@ import (
 
 const (
 	integrationDir = "integration"
-	buildDir = "test"
-	instructions = "stack[Widget]"
+	buildDir       = "test"
+	instructions   = "stack[Widget]"
 )
 
 func main() {
@@ -33,7 +33,7 @@ func main() {
 
 	logFailureOnError(fmt.Sprintf("changing to test directory (%s)", buildInIntegrationDir),
 		os.Chdir(wd))
-	run := exec.Command(filepath.Join(buildInIntegrationDir)+"/build", "-pathTo", "templates/example/widgetStack.go", instructions)
+	run := exec.Command(filepath.Join(buildInIntegrationDir)+"/build", "-pathTo", "integration/example/widgetStack.go", instructions)
 	run.Dir = wd
 	stdout, err := run.StdoutPipe()
 	if err != nil {
@@ -64,7 +64,7 @@ func logFrom(r io.ReadCloser) {
 	r.Read(b)
 	out := "<empty>"
 	if strings.Trim(string(b), " ") != "" {
-		out = fmt.Sprintf("bytes(%d)[%v]: ", len(b), b)+string(b)
+		out = fmt.Sprintf("bytes(%d)[%v]: ", len(b), b) + string(b)
 	}
 	log.Println(out)
 }

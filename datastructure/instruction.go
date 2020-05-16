@@ -1,4 +1,4 @@
-package model
+package datastructure
 
 import (
 	"fmt"
@@ -11,7 +11,7 @@ import (
 var directiveMask = regexp.MustCompile(`^([a-zA-Z]\w+)\[([a-zA-Z]\w+)\]$`)
 
 type Instruction struct {
-	dsType     DatastructureType
+	dsType     Type
 	entityType string
 }
 
@@ -68,7 +68,7 @@ func (i *Instruction) dsName() string {
 	return fmt.Sprintf("%s%s", i.entityType, strings.ToUpper(ds[:1])+ds[1:])
 }
 
-func ParseInstructions(instructions string) (DatastructureType, string) {
+func ParseInstructions(instructions string) (Type, string) {
 	matches := directiveMask.FindAllStringSubmatch(instructions, -1)
 
 	if matches == nil || len(matches) < 1 {
@@ -82,7 +82,7 @@ func ParseInstructions(instructions string) (DatastructureType, string) {
 
 	for i, dsType := range datastructures {
 		if strings.ToLower(dsType) == strings.ToLower(subs[0]) {
-			return DatastructureType(i), subs[1]
+			return Type(i), subs[1]
 		}
 	}
 
